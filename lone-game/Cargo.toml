@@ -1,0 +1,12 @@
+[package]
+name = "lone-game"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+
+[dependencies]
+sdl2 = "0.35.2"
+num-traits = "0.2.14"
+
+[profile.release]
+debug = true

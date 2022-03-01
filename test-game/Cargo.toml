@@ -1,0 +1,11 @@
+[package]
+name = "test-game"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+
+[dependencies]
+lone-game = { path = "../lone-game" }
+
+[profile.release]
+debug = true

@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "lone-game",
+    "test-game",
+]
