@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'rusdlem'",
+            "name": "Debug executable 'test-game'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=rusdlem",
-                    "--package=rusdlem"
+                    "--bin=test-game",
+                    "--package=test-game"
                 ],
                 "filter": {
-                    "name": "rusdlem",
+                    "name": "test-game",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'rusdlem'",
+            "name": "Debug unit tests in executable 'test-game'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=rusdlem",
-                    "--package=rusdlem"
+                    "--bin=test-game",
+                    "--package=test-game"
                 ],
                 "filter": {
-                    "name": "rusdlem",
+                    "name": "test-game",
                     "kind": "bin"
                 }
             },

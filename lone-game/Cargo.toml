@@ -7,6 +7,8 @@ license = "BSD-3-Clause"
 [dependencies]
 sdl2 = "0.35.2"
 num-traits = "0.2.14"
+owning_ref = "0.4.1"
+ouroboros = "0.14.2"
 
 [profile.release]
 debug = true

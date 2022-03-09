@@ -16,7 +16,7 @@
  */
 extern crate lone_game;
 
-use lone_game::application::Application;
+use lone_game::application::{Application};
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -45,11 +45,14 @@ fn main() -> Result<(), String> {
     for (word, n) in &counter {
         println!("{}: {}", word, n);
     }
+
+    let idk = false;
+    //let mut test = TestLT::new()?;
+    //test.set()?;
  
     let mut app = Application::new()?;
-    let appRef = &mut app;
-    appRef.init()?;
-    //appRef.run()?;
+    app.init()?;
+    app.run()?;
     /*
     #[cfg(target_os = "emscripten")]
     let _ = sdl2::hint::set("SDL_EMSCRIPTEN_ASYNCIFY","1");

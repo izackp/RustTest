@@ -1,20 +1,73 @@
 
-extern crate sdl2;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc, option, cell::RefCell};
 
-use sdl2::{render::{Texture, TextureCreator}, pixels::{PixelFormatEnum, Color}, video::WindowContext};
+use sdl2::{render::{Texture, TextureCreator, Canvas, WindowCanvas, TextureValueError}, pixels::{PixelFormatEnum, Color}, video::WindowContext};
 use crate::geometry::Size;
 
-
+pub struct WindowA {
+    pub canvas: RefCell<sdl2::render::WindowCanvas>,
+    pub creator: TextureCreator<WindowContext>
+}
+/*
 pub struct Window<'a> {
-    pub _canvas: sdl2::render::WindowCanvas,
-    pub creator: TextureCreator<WindowContext>,
-    pub texture: Option<Texture<'a>>,
-    _marker: PhantomData<&'a ()>
+    pub windowA:&'a RefCell<WindowA>,
+    pub resource_manager: ResourceManager<'a>
+} */
+
+pub struct Window2<'a, 'b> {
+    pub canvas: &'a RefCell<sdl2::render::WindowCanvas>,
+    pub creator: &'a TextureCreator<WindowContext>,
+    pub resource_manager: &'b ResourceManager<'a>
 }
 
-impl<'a> Window<'a> {
-    pub fn new_with_size(video_subsystem: &sdl2::VideoSubsystem, size: Size<u32>) -> Result<Window<'a>, String> {
+pub struct ResourceManager<'a> {
+    pub creator: &'a TextureCreator<WindowContext>,
+    pub texture: Texture<'a>
+}
+
+impl<'a> ResourceManager<'a> {
+    pub fn new<'b:'a>(creatorRef: &'b TextureCreator<WindowContext>, cell: &'b RefCell<sdl2::render::WindowCanvas>) -> Result<ResourceManager<'a>, String> {
+        let mut b_canvas = cell.borrow_mut();
+        let (w, h) = b_canvas.window().size();
+        //let creator = &self.creator;
+
+        let result = creatorRef.create_texture_target(PixelFormatEnum::RGBA8888, w, h);
+        let result_mapped = result.map_err(|e| e.to_string());
+        let mut bg_texture = result_mapped?;
+        
+        b_canvas.with_texture_canvas(&mut bg_texture, |texture_canvas| {
+            texture_canvas.set_draw_color(Color::RGBA(230,230,230,255));
+            texture_canvas.clear();
+            texture_canvas.set_draw_color(Color::RGBA(0,0,255,255));
+            { 
+                let w:i32 = w.try_into().unwrap();
+                let h:i32 = h.try_into().unwrap();
+                texture_canvas.draw_line(sdl2::rect::Point::new(w-1,0),
+                sdl2::rect::Point::new(0,h-1)).unwrap();
+            }
+        }).map_err(|e| e.to_string())?;
+        let manager = ResourceManager { creator: creatorRef, texture: bg_texture };
+        return Ok(manager);
+    }
+}
+
+//impl<'a> Window<'a> {
+    /*
+    pub fn new(windowA:&'a RefCell<WindowA>, texture_creator:&'a TextureCreator<WindowContext>) -> Result<Window<'a>, String> {
+        //let rm = windowA.buildRM()?;
+        let mut option:Option<ResourceManager<'a>> = None;
+        {
+            let rm = ResourceManager::new(texture_creator, windowA)?;
+            option = Some(rm);
+        }
+        return Ok(Window { windowA: windowA, resource_manager:option.unwrap() });
+    } */
+//}
+
+impl WindowA {
+
+
+    pub fn new_with_size(video_subsystem: &sdl2::VideoSubsystem, size: Size<u32>) -> Result<WindowA, String> {
         
         let window = video_subsystem
             .window("Lone-Game", size.width, size.height)
@@ -27,58 +80,20 @@ impl<'a> Window<'a> {
 
         let w = size.width;
         let h = size.height;
-        let texture_creator = canvas.texture_creator();
+
+        let creator = canvas.texture_creator();
+
+        let mut window = WindowA { canvas: RefCell::new(canvas), creator:creator};
+        //let resource_manager:ResourceManager<'a> = ResourceManager::new(&window.creator, & mut canvas)?;
+        //window.resource_manager = Some(resource_manager);
     
-        //setup the background image, light grey with a blue diagonal line from upper right to lower left
-        /*
-        let texture:Texture = {
-            let mut bg_texture = texture_creator
-                .create_texture_target(PixelFormatEnum::RGBA8888, w, h)
-                .map_err(|e| e.to_string())?;
-        
-            canvas.with_texture_canvas(&mut bg_texture, |texture_canvas| {
-                texture_canvas.set_draw_color(Color::RGBA(230,230,230,255));
-                texture_canvas.clear();
-                texture_canvas.set_draw_color(Color::RGBA(0,0,255,255));
-                { 
-                    let w:i32 = w.try_into().unwrap();
-                    let h:i32 = h.try_into().unwrap();
-                    texture_canvas.draw_line(sdl2::rect::Point::new(w-1,0),
-                    sdl2::rect::Point::new(0,h-1)).unwrap();
-                }
-            }).map_err(|e| e.to_string())?;
-            bg_texture
-        };
-
-        Ok(Window { _canvas: canvas, creator:texture_creator, texture: texture})*/
-        Ok(Window { _canvas: canvas, creator:texture_creator, texture:None, _marker:PhantomData})
+        Ok(window)
     }
 
-    pub fn addTexture(&'a mut self) -> Result<(), String> {
-        let (w, h) = self._canvas.window().size();
-        let mut bg_texture = self.creator
-            .create_texture_target(PixelFormatEnum::RGBA8888, w, h)
-            .map_err(|e| e.to_string())?;
-        
-        self._canvas.with_texture_canvas(&mut bg_texture, |texture_canvas| {
-            texture_canvas.set_draw_color(Color::RGBA(230,230,230,255));
-            texture_canvas.clear();
-            texture_canvas.set_draw_color(Color::RGBA(0,0,255,255));
-            { 
-                let w:i32 = w.try_into().unwrap();
-                let h:i32 = h.try_into().unwrap();
-                texture_canvas.draw_line(sdl2::rect::Point::new(w-1,0),
-                sdl2::rect::Point::new(0,h-1)).unwrap();
-            }
-        }).map_err(|e| e.to_string())?;
-        self.texture = Some(bg_texture);
-        return Ok(());
-    }
-
-    pub fn new(video_subsystem: &sdl2::VideoSubsystem) -> Result<Window, String> {
+    pub fn new(video_subsystem: &sdl2::VideoSubsystem) -> Result<WindowA, String> {
         let size = Size { width: 640, height: 480 };
-        Window::new_with_size(video_subsystem, size)
+        WindowA::new_with_size(video_subsystem, size)
     }
 
-    //render_target_supported before providing canvas
+    //TODO: render_target_supported before providing canvas
 }
