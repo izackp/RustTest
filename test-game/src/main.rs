@@ -25,7 +25,16 @@ use std::collections::HashMap;
 
 fn main() -> Result<(), String> {
 
-    
+    test_file_read();
+ 
+    let mut app = Application::new()?;
+    app.init()?;
+    app.run()?;
+
+    Ok(())
+}
+
+fn test_file_read() {
     let mut file = File::open("data.txt").expect("Cannot open file");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Cannot read file");
@@ -45,74 +54,4 @@ fn main() -> Result<(), String> {
     for (word, n) in &counter {
         println!("{}: {}", word, n);
     }
-
-    let idk = false;
-    //let mut test = TestLT::new()?;
-    //test.set()?;
- 
-    let mut app = Application::new()?;
-    app.init()?;
-    app.run()?;
-    /*
-    #[cfg(target_os = "emscripten")]
-    let _ = sdl2::hint::set("SDL_EMSCRIPTEN_ASYNCIFY","1");
-    
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?; 
-    let (width, height) = (640,480);
-    let window = video_subsystem
-        .window("RuSDLem", width, height)
-        .position_centered()
-        .resizable()
-        .build()
-        .map_err(|e| e.to_string())?;
-    let mut canvas = window.into_canvas().software().build().map_err(|e| e.to_string())?;
-    let creator = canvas.texture_creator();
-
-    //setup the background image, light grey with a blue diagonal line from upper right to lower left
-    let mut bg_texture = creator
-        .create_texture_target(PixelFormatEnum::RGBA8888, width, height)
-        .map_err(|e| e.to_string())?;
-
-    canvas.with_texture_canvas(&mut bg_texture, |texture_canvas| {
-            texture_canvas.set_draw_color(Color::RGBA(230,230,230,255));
-            texture_canvas.clear();
-            texture_canvas.set_draw_color(Color::RGBA(0,0,255,255));
-            { 
-                let w:i32 = width.try_into().unwrap();
-                let h:i32 = height.try_into().unwrap();
-                texture_canvas.draw_line(Point::new(w-1,0),
-                                           Point::new(0,h-1)).unwrap();
-            }
-        }).map_err(|e| e.to_string())?;
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
-
-    'mainloop: loop {
-        let event = event_pump.wait_event(); //blocking wait for events
-        
-        canvas.copy(&bg_texture, None, None).unwrap();
-                
-        match event {
-            Event::KeyDown {keycode: Some(Keycode::Escape),..} | Event::Quit { .. } 
-                => { break 'mainloop; }
-            Event::KeyDown {keycode: Some(Keycode::F),..}
-                => { 
-                    //"F" -> full screen mode
-                    canvas.window_mut().set_fullscreen(sdl2::video::FullscreenType::True)?;
-                }
-            Event::MouseMotion {x, y, .. } => {
-                //draw a red line from the upper left corner to the current mouse position
-                canvas.set_draw_color(Color::RGBA(255,0,0,255));
-                canvas.draw_line(Point::new(0,0), Point::new(x,y)).unwrap();
-                ()}
-            _ => {
-                println!("{:?}",event); //Print out other events to the "console"
-                ()}
-        }
-        canvas.present();
-    };
-    
-     */
-    Ok(())
 }

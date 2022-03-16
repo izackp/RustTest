@@ -58,10 +58,6 @@ impl WindowA {
 
         let canvas = window.into_canvas().accelerated().build().map_err(|e| e.to_string())?;
         
-
-        let w = size.width;
-        let h = size.height;
-
         let creator = canvas.texture_creator();
         let canvas_cell = RefCell::new(canvas);
 
