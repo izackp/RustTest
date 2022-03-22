@@ -2,11 +2,17 @@
 use std::{cell::RefCell};
 
 use sdl2::{render::{Texture, TextureCreator}, pixels::{PixelFormatEnum, Color}, video::WindowContext};
+use sdl2::event::Event;
 use crate::geometry::Size;
+use crate::application::Application;
 use ouroboros::self_referencing;
 
+pub trait WindowDelegate {
+    fn on_event(&self, window:& Window, app:& mut Application<'_>, event:&Event) -> Result<(), String>;
+}
+
 #[self_referencing]
-pub struct WindowA {
+pub struct Window {
     pub identifier: u32,
     pub canvas: RefCell<sdl2::render::WindowCanvas>,
     pub creator: TextureCreator<WindowContext>,
@@ -45,9 +51,9 @@ impl<'a> ResourceManager<'a> {
     }
 }
 
-impl WindowA {
+impl Window {
 
-    pub fn new_with_size(video_subsystem: &sdl2::VideoSubsystem, size: Size<u32>) -> Result<WindowA, String> {
+    pub fn new_with_size(video_subsystem: &sdl2::VideoSubsystem, size: Size<u32>) -> Result<Window, String> {
         
         let window = video_subsystem
             .window("Lone-Game", size.width, size.height)
@@ -63,7 +69,7 @@ impl WindowA {
 
         let window_id = canvas_cell.borrow().window().id();
 
-        let result = WindowATryBuilder {
+        let result = WindowTryBuilder {
             identifier:window_id,
             canvas: canvas_cell,
             creator: creator,
@@ -73,14 +79,109 @@ impl WindowA {
         Ok(result)
     }
 
-    pub fn new2(video_subsystem: &sdl2::VideoSubsystem) -> Result<WindowA, String> {
+    pub fn build(video_subsystem: &sdl2::VideoSubsystem) -> Result<Window, String> {
         let size = Size { width: 640, height: 480 };
-        WindowA::new_with_size(video_subsystem, size)
+        Window::new_with_size(video_subsystem, size)
     }
+    //TODO: render_target_supported before providing canvas
 
     pub fn id(&self) -> u32 {
         return self.borrow_identifier().clone();
     }
 
-    //TODO: render_target_supported before providing canvas
+
+    pub fn window_flags(&self) -> u32 {
+        return self.borrow_canvas().borrow().window().window_flags()
+    }
+
+    pub fn is_window_flag_set(&self, flag:sdl2::sys::SDL_WindowFlags) -> bool {
+        let value = flag as u32;
+        self.window_flags() & value == value
+    }
+
+    pub fn is_fullscreen(&self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_FULLSCREEN)
+    }
+
+    pub fn is_fullscreen_desktop(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_FULLSCREEN_DESKTOP)
+    }
+
+    pub fn is_opengl(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_OPENGL)
+    }
+
+    pub fn is_vulkan(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_VULKAN)
+    }
+
+    pub fn is_shown(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_SHOWN)
+    }
+
+    pub fn is_hidden(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_HIDDEN)
+    }
+
+    pub fn is_borderless(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_BORDERLESS)
+    }
+
+    pub fn is_resizable(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_RESIZABLE)
+    }
+
+    pub fn is_minimized(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_MINIMIZED)
+    }
+
+    pub fn is_maximized(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_MAXIMIZED)
+    }
+
+    pub fn is_input_grabbed(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_INPUT_GRABBED)
+    }
+
+    pub fn has_input_focus(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_INPUT_FOCUS)
+    }
+
+    pub fn has_mouse_focus(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_MOUSE_FOCUS)
+    }
+
+    pub fn is_foreign(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_FOREIGN)
+    }
+
+    pub fn has_mouse_capture(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_MOUSE_CAPTURE)
+    }
+
+    pub fn allows_highdpi(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_ALLOW_HIGHDPI)
+    }
+
+    //X-11 Only:
+
+    pub fn is_always_on_top(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_ALWAYS_ON_TOP)
+    }
+
+    pub fn skips_taskbar(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_SKIP_TASKBAR)
+    }
+
+    pub fn is_utility(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_UTILITY)
+    }
+
+    pub fn is_tooltip(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_TOOLTIP)
+    }
+
+    pub fn is_popup(&mut self) -> bool {
+        self.is_window_flag_set(sdl2::sys::SDL_WindowFlags::SDL_WINDOW_POPUP_MENU)
+    }
 }

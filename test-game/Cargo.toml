@@ -5,6 +5,7 @@ edition = "2021"
 license = "BSD-3-Clause"
 
 [dependencies]
+sdl2 = "0.35.2"
 lone-game = { path = "../lone-game" }
 
 [profile.release]

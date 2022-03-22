@@ -183,6 +183,7 @@ name = "test-game"
 version = "0.1.0"
 dependencies = [
  "lone-game",
+ "sdl2",
 ]
 
 [[package]]

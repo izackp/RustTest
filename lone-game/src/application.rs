@@ -2,17 +2,29 @@
 
 pub mod window;
 
+use std::cell::RefCell;
+
 use sdl2::VideoSubsystem;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use sdl2::rect::Point;
-use self::window::WindowA;
+use crate::defered_vec::DeferedVec;
+use crate::option_ext::OptionExt;
 
+use self::window::{Window, WindowDelegate};
 
-pub struct Application {
+pub trait AppDelegate {
+    fn init(&self, app:& mut Application<'_>) -> Result<(), String>;
+    fn run(&self, app:& mut Application<'_>) -> Result<(), String>;
+}
+
+pub struct WindowPair {
+    window: Window,
+    delegate: Box<dyn WindowDelegate> //TODO: Move into window?
+}
+
+pub struct Application<'a> {
     sdl_context: sdl2::Sdl,
-    video_subsystem: Option<sdl2::VideoSubsystem>
+    video_subsystem: Option<sdl2::VideoSubsystem>,
+    list_windows: DeferedVec<WindowPair>,
+    delegate: &'a dyn AppDelegate
 }
 /*
 pub struct Loop<'a> {
@@ -20,115 +32,74 @@ pub struct Loop<'a> {
     list_window: [Window<'a>; 1],
 }*/
 
-impl Application {
-    pub fn new() -> Result<Application, String> {
+impl Application<'_> {
+    pub fn new(delegate:&dyn AppDelegate) -> Result<Application<'_>, String> {
         let context = sdl2::init()?;
         Ok(Application { 
             sdl_context:context, 
-            video_subsystem:None
+            video_subsystem:None,
+            list_windows:DeferedVec::new(),
+            delegate:delegate
         })
     }
 
     //TODO: Use 'if let' when new polonius borrow checker gets implemented
     fn video(&mut self) -> Result<&VideoSubsystem, String> {
-        if self.video_subsystem.is_none() {
-            self.video_subsystem = Some(self.sdl_context.video()?);
-        }
-        let video = self.video_subsystem.as_ref().unwrap();
-        return Ok(video);
-        //let result = self.video_subsystem.get_or_assign_result(|| self.sdl_context.video());
-        //return result;
+        let result = self.video_subsystem.get_or_assign_result(|| self.sdl_context.video());
+        return result;
     }
-/*
-    fn videoLet(&mut self) -> Result<&VideoSubsystem, String> {
-        if let Some(cached) = self.video_subsystem.as_ref() {
-            return Ok(cached);
+
+    pub fn add_window<'a, 'b:'a>(&'b mut self, delegate:Box<dyn WindowDelegate>) -> Result<&'a mut Window, String> {
+        let video = (*self.video()?).clone();
+        let list_windows = &mut self.list_windows;
+        let another = Window::build(&video)?;
+        list_windows.to_add.push(WindowPair {window: another, delegate: delegate});
+        let count = list_windows.to_add.len();
+        return Ok(& mut list_windows.to_add[count - 1].window);
+    }
+
+    pub fn remove_window(&mut self, window:&Window) -> Result<(), String> {
+        let list_windows = &mut self.list_windows;
+        let pos = list_windows.iter().position(|it| it.window.id() == window.id());
+        if pos.is_none() {
+            return Err("Window doesn't exisit".to_string());
         }
-        let system = self.sdl_context.video()?;
-        self.video_subsystem = Some(system);
-        let result = self.video_subsystem.as_ref().expect("Unexpected nil");
-        return Ok(result);
-    } */
+        list_windows.to_remove.push(pos.unwrap());
+        return Ok(())
+    }
 
     pub fn init<'b>(&mut self) -> Result<bool, String> {
         #[cfg(target_os = "emscripten")]
         let _ = sdl2::hint::set("SDL_EMSCRIPTEN_ASYNCIFY","1");
         
-        if self.video_subsystem.is_none() {
-            self.video_subsystem = Some(self.sdl_context.video()?);
-        }
+        self.delegate.init(self)?;
+
         return Ok(true);
     }
 
     pub fn run(&mut self) -> Result<bool, String> {
         let mut event_pump = self.sdl_context.event_pump().unwrap();
-        let video = &self.video()?;
 
-        let window = WindowA::new2(video)?;
-        let mut list_windows:Vec<WindowA> = vec![window];
-        let mut windows_to_add:Vec<WindowA> = Vec::new();
-        let mut windows_to_remove:Vec<u32> = Vec::new();
         'mainloop: loop {
             let event = event_pump.wait_event(); //blocking wait for events
+            {
+                let list_windows = &mut self.list_windows;
+                list_windows.process_changes();
 
-            while let Some(window_id) = windows_to_remove.pop() {
-                let index = list_windows.iter().position(|item| item.id() == window_id);
-                if let Some(index) = index {
-                    list_windows.swap_remove(index);
+                if list_windows.len() == 0 {
+                    break 'mainloop;
                 }
             }
 
-            while let Some(each_window) = windows_to_add.pop() {
-                list_windows.push(each_window);
-            }
-
-            if list_windows.len() == 0 {
-                break 'mainloop;
-            }
-            
-            for each_window in &list_windows {
-                let c = each_window.borrow_canvas();
-                let canvas = &mut c.borrow_mut();
-                canvas.copy(&each_window.borrow_rm().texture, None, None).unwrap();
-                let window_id = each_window.id();
-                
+            for each_pair in & self.list_windows.container {
+                let window_id = each_pair.window.id();
                 if let Some(event_window_id) = event.get_window_id() {
                     if event_window_id == window_id { //TODO: https://rust-lang.github.io/rfcs/2497-if-let-chains.html
-                        match event {
-                            Event::KeyDown {keycode: Some(Keycode::F),..} => { 
-                                //"F" -> full screen mode
-                                canvas.window_mut().set_fullscreen(sdl2::video::FullscreenType::True)?;
-                            }
-                            Event::KeyDown {keycode: Some(Keycode::Q),..} => {
-                                windows_to_remove.push(window_id);
-                            }
-                            Event::KeyDown {keycode: Some(Keycode::W),..} => {
-                                let another = WindowA::new2(video)?;
-                                windows_to_add.push(another);
-                            }
-                            _ => {
-                                println!("{:?}",event); //Print out other events to the "console"
-                                ()
-                            }
-                        }
+                        each_pair.delegate.on_event(& each_pair.window, self, &event)?;
                     }
+                } else {
+                    each_pair.delegate.on_event(& each_pair.window, self, &event)?;
                 }
-                match event {
-                    Event::KeyDown {keycode: Some(Keycode::Escape),..} | Event::Quit { .. } 
-                        => { break 'mainloop; }
-                    Event::MouseMotion {x, y, .. } => {
-                        //draw a red line from the upper left corner to the current mouse position
-                        canvas.set_draw_color(Color::RGBA(255,0,0,255));
-                        canvas.draw_line(Point::new(0,0), Point::new(x,y)).unwrap();
-                        ()
-                    }
-                    _ => {
-                        println!("{:?}",event); //Print out other events to the "console"
-                        ()
-                    }
-                }
-                
-                canvas.present();
             }
         };
         return Ok(true);
